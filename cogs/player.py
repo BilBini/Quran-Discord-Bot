@@ -177,70 +177,82 @@ class Player(commands.Cog):
     async def play_command(self, ctx):
         """Handle play command for a specific guild"""
         try:
+            print(f"Play command received from {ctx.author} in {ctx.guild}")
             player = self.get_player(ctx.guild.id)
             
-            # Disconnect from any other channel in this guild
-            if player['voice_client'] and player['voice_client'].channel != ctx.author.voice.channel:
-                await player['voice_client'].move_to(ctx.author.voice.channel)
+            # Verify user is in a voice channel
+            if not ctx.author.voice or not ctx.author.voice.channel:
+                print(f"User {ctx.author} not in voice channel")
+                return await ctx.send("You need to be in a voice channel to use this command.")
                 
-            if ctx.author.voice and ctx.author.voice.channel:
-                channel = ctx.author.voice.channel
-                
-                if player['voice_client']:
-                    if player['voice_client'].channel != channel:
-                        await player['voice_client'].move_to(channel)
-                else:
-                    player['voice_client'] = await channel.connect()
-                
+            channel = ctx.author.voice.channel
+            print(f"Attempting to connect to voice channel: {channel.name}")
+            
+            # Connect or move to the channel
+            if player['voice_client']:
+                if player['voice_client'].channel != channel:
+                    print(f"Moving to channel {channel.name}")
+                    await player['voice_client'].move_to(channel)
+            else:
+                print(f"Connecting to channel {channel.name}")
+                player['voice_client'] = await channel.connect()
+            
+            # Initialize queue if empty
+            if not player['queue']:
+                print("Initializing MP3 queue")
+                player['queue'] = self.get_mp3_files()
+                player['loop'] = True
                 if not player['queue']:
-                    player['queue'] = self.get_mp3_files()
-                    player['loop'] = True
-                
-                # Send initial response
-                embed = discord.Embed(
-                    description="Starting Quran playback...",
-                    color=0x5865F2
-                )
-                if ctx.interaction:
-                    await ctx.interaction.followup.send(embed=embed)
-                else:
-                    await ctx.send(embed=embed)
-                
-                await self.play_next(ctx)
-            else:
-                if ctx.interaction:
-                    await ctx.interaction.followup.send("You need to be in a voice channel to use this command.")
-                else:
-                    await ctx.send("You need to be in a voice channel to use this command.")
+                    print("No MP3 files found!")
+                    return await ctx.send("No Quran MP3 files found. Please contact the bot administrator.")
+            
+            # Send initial response
+            print("Sending initial response")
+            embed = discord.Embed(
+                description="Starting Quran playback...",
+                color=0x5865F2
+            )
+            await ctx.send(embed=embed)
+            
+            # Start playback
+            print("Starting playback")
+            await self.play_next(ctx)
+            
+        except discord.ClientException as e:
+            print(f"Discord client error: {e}")
+            await ctx.send("Failed to connect to voice channel. Please try again.")
         except Exception as e:
-            print(f"Error in play_command: {e}")
-            if ctx.interaction:
-                await ctx.interaction.followup.send("Failed to start playback. Please try again.")
-            else:
-                await ctx.send("Failed to start playback. Please try again.")
+            print(f"Unexpected error in play_command: {e}")
+            await ctx.send("Failed to start playback. Please try again.")
+            await self.cleanup()
 
     async def play_next(self, ctx):
         try:
             player = self.get_player(ctx.guild.id)
             
             if not player['voice_client'] or not player['voice_client'].is_connected():
+                print("Voice client not connected")
                 return
                 
             if not player['queue'] and player['loop']:
+                print("Refilling queue")
                 player['queue'] = self.get_mp3_files()
                 
             if player['queue']:
                 player['current'] = player['queue'].pop(0)
+                print(f"Playing: {player['current']}")
                 source = FFmpegPCMAudio(os.path.join(MP3_FOLDER, player['current']))
                 player['current_user'] = ctx.author
                 
                 def after_playing(error):
                     if error:
-                        print(f'Error: {error}')
+                        print(f'Playback error: {error}')
                     if player['voice_client'] and player['voice_client'].is_connected():
+                        print("Playing next track")
                         self.bot.loop.create_task(self.play_next(ctx))
                         
                 if not player['voice_client'].is_playing():
+                    print("Starting playback")
                     player['voice_client'].play(source, after=after_playing)
                 
                 # Create and send embed with controls
@@ -259,6 +271,7 @@ class Player(commands.Cog):
                     player['controls_message'] = await ctx.send(embed=embed, view=view)
                 
             elif player['voice_client'] and not player['voice_client'].is_playing():
+                print("No more tracks to play, cleaning up")
                 await self.cleanup()
         except Exception as e:
             print(f"Error in play_next: {e}")

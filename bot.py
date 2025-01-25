@@ -14,9 +14,16 @@ intents.message_content = True
 
 bot = commands.Bot(command_prefix=PREFIX, intents=intents)
 
-# Ensure MP3 folder exists
+# Ensure MP3 folder exists and has files
 if not os.path.exists(MP3_FOLDER):
     os.makedirs(MP3_FOLDER)
+    print(f"Created MP3 folder at {MP3_FOLDER}")
+
+mp3_files = [f for f in os.listdir(MP3_FOLDER) if f.endswith('.mp3')]
+if not mp3_files:
+    print(f"WARNING: No MP3 files found in {MP3_FOLDER}!")
+else:
+    print(f"Found {len(mp3_files)} MP3 files in {MP3_FOLDER}")
 
 async def load_cogs():
     for filename in os.listdir('./cogs'):
