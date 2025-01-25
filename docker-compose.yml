@@ -1,0 +1,15 @@
+version: '3.8'
+
+services:
+  quran-bot:
+    build: .
+    container_name: quran-bot
+    restart: unless-stopped
+    environment:
+      - DISCORD_TOKEN=${DISCORD_TOKEN}
+      - DISCORD_PREFIX=${DISCORD_PREFIX}
+    healthcheck:
+      test: ["CMD", "python", "-c", "import os; os._exit(0)"]
+      interval: 30s
+      timeout: 10s
+      retries: 3 
