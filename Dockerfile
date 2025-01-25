@@ -17,7 +17,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 # Download and extract Quran MP3 files
 RUN mkdir -p /app/quran_mp3s && \
-    wget -O /app/quran.zip "https://drive.usercontent.google.com/download?id=1rea9cx4ufxBbpUpW9NyO8qT2KhsWhIS3&export=download&authuser=0&confirm=t&uuid=535d6325-2354-43a8-9169-35bf82c777cc&at=AIrpjvNZ_lPBqXc8riWzx6cIRbBl%3A1737823934983" && \
+    wget -O /app/quran.zip "https://drive.google.com/uc?export=download&id=1rea9cx4ufxBbpUpW9NyO8qT2KhsWhIS3" && \
     unzip /app/quran.zip -d /app/quran_mp3s && \
     rm /app/quran.zip && \
     echo "MP3 files downloaded:" && \
